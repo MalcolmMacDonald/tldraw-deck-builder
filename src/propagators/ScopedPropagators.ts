@@ -3,11 +3,12 @@ import { Geo } from "@/propagators/Geo"
 import { Edge, getArrowsFromShape, getEdge } from "@/propagators/tlgraph"
 import { isShapeOfType, updateProps } from "@/propagators/utils"
 import { Editor, TLArrowShape, TLBinding, TLGroupShape, TLShape, TLShapeId } from "tldraw"
+import { AsyncFunction } from "@/propagators/AsyncFunction"
 
 type Prefix = 'click' | 'tick' | 'geo' | ''
 
-export function registerDefaultPropagators(editor: Editor) {
-  registerPropagators(editor, [
+export async function registerDefaultPropagators(editor: Editor) {
+ await registerPropagators(editor, [
     ChangePropagator,
     ClickPropagator,
     TickPropagator,
@@ -27,10 +28,10 @@ function isExpandedPropagatorOfType(arrow: TLShape, prefix: Prefix) {
 }
 
 class ArrowFunctionCache {
-  private cache: Map<string, Function | null> = new Map<string, Function | null>()
+  private cache: Map<string, AsyncFunction | null> = new Map<string, AsyncFunction | null>()
 
   /** returns undefined if the function could not be found or created */
-  get(editor: Editor, edge: Edge, prefix: Prefix): Function | undefined {
+  get(editor: Editor, edge: Edge, prefix: Prefix): AsyncFunction | undefined {
     if (this.cache.has(edge.arrowId)) {
       return this.cache.get(edge.arrowId)
     }
@@ -38,7 +39,7 @@ class ArrowFunctionCache {
     return this.set(editor, edge, prefix)
   }
   /** returns undefined if the function could not be created */
-  set(editor: Editor, edge: Edge, prefix: Prefix): Function | undefined {
+  set(editor: Editor, edge: Edge, prefix: Prefix): AsyncFunction | undefined {
     try {
       const arrowShape = editor.getShape(edge.arrowId)
       if (!arrowShape) throw new Error('Arrow shape not found')
@@ -48,7 +49,7 @@ class ArrowFunctionCache {
       const mapping = ${textWithoutPrefix}
       editor.updateShape(_unpack({...to, ...mapping}))
       `
-      const func = new Function('editor', 'from', 'to', 'G', 'bounds', 'dt', '_unpack', body);
+      const func = new AsyncFunction('editor', 'from', 'to', 'G', 'bounds', 'dt', '_unpack', body);
       this.cache.set(edge.arrowId, func)
       return func
     } catch (error) {
@@ -102,36 +103,36 @@ function setArrowColor(editor: Editor, arrow: TLArrowShape, color: TLArrowShape[
   })
 }
 
-export function registerPropagators(editor: Editor, propagators: (new (editor: Editor) => Propagator)[]) {
+export async function registerPropagators(editor: Editor, propagators: (new (editor: Editor) => Propagator)[]) {
   const _propagators = propagators.map((PropagatorClass) => new PropagatorClass(editor))
 
   for (const prop of _propagators) {
     for (const shape of editor.getCurrentPageShapes()) {
       if (isShapeOfType<TLArrowShape>(shape, 'arrow')) {
-        prop.onArrowChange(editor, shape)
+       await prop.onArrowChange(editor, shape)
       }
     }
-    editor.sideEffects.registerAfterChangeHandler<"shape">("shape", (_, next) => {
+    editor.sideEffects.registerAfterChangeHandler<"shape">("shape", async (_, next) => {
       if (isShapeOfType<TLGroupShape>(next, 'group')) {
         const childIds = editor.getSortedChildIdsForParent(next.id)
         for (const childId of childIds) {
           const child = editor.getShape(childId)
-          prop.afterChangeHandler?.(editor, child)
+          await prop.afterChangeHandler?.(editor, child)
         }
         return
       }
-      prop.afterChangeHandler?.(editor, next)
+      await prop.afterChangeHandler?.(editor, next)
       if (isShapeOfType<TLArrowShape>(next, 'arrow')) {
-        prop.onArrowChange(editor, next)
+        await prop.onArrowChange(editor, next)
       }
     })
 
-    function updateOnBindingChange(editor: Editor, binding: TLBinding) {
+     function updateOnBindingChange(editor: Editor, binding: TLBinding) {
       if (binding.type !== 'arrow') return
       const arrow = editor.getShape(binding.fromId)
       if (!arrow) return
       if (!isShapeOfType<TLArrowShape>(arrow, 'arrow')) return
-      prop.onArrowChange(editor, arrow)
+       prop.onArrowChange(editor, arrow)
     }
 
     // TODO: remove this when binding creation
@@ -139,15 +140,15 @@ export function registerPropagators(editor: Editor, propagators: (new (editor: E
       updateOnBindingChange(editor, binding)
     })
     // TODO: remove this when binding creation
-    editor.sideEffects.registerAfterDeleteHandler<"binding">("binding", (binding) => {
-      updateOnBindingChange(editor, binding)
+    editor.sideEffects.registerAfterDeleteHandler<"binding">("binding",  (binding) => {
+       updateOnBindingChange(editor, binding)
     })
 
-    editor.on('event', (event) => {
-      prop.eventHandler?.(event)
+    editor.on('event', async (event) => {
+       prop.eventHandler?.(event)
     })
-    editor.on('tick', () => {
-      prop.tickHandler?.()
+    editor.on('tick',  async () => {
+       prop.tickHandler?.()
     })
   }
 }
@@ -171,14 +172,14 @@ export abstract class Propagator {
   /** function to check if any listeners need to be added/removed
    * called on mount and when an arrow changes 
   */
-  onArrowChange(editor: Editor, arrow: TLArrowShape): void {
+  async onArrowChange(editor: Editor, arrow: TLArrowShape): Promise<void> {
     const edge = getEdge(arrow, editor)
     if (!edge) return
 
     const isPropagator = isPropagatorOfType(arrow, this.prefix) || isExpandedPropagatorOfType(arrow, this.prefix)
 
     if (isPropagator) {
-      if (this.validateOnArrowChange && !this.propagate(editor, arrow.id)) {
+      if (this.validateOnArrowChange && !(await this.propagate(editor, arrow.id))) {
         this.removeListener(arrow.id, edge)
         return
       }
@@ -204,7 +205,7 @@ export abstract class Propagator {
   }
 
   /** the function to be called when side effect / event is triggered */
-  propagate(editor: Editor, arrow: TLShapeId): boolean {
+  async propagate(editor: Editor, arrow: TLShapeId): Promise<boolean> {
     const edge = getEdge(editor.getShape(arrow), editor)
     if (!edge) return
 
@@ -217,7 +218,7 @@ export abstract class Propagator {
 
     try {
       const func = this.arrowFunctionCache.get(editor, edge, this.prefix)
-      const result = func(editor, fromShapePacked, toShapePacked, this.geo, bounds, DeltaTime.dt, unpackShape);
+      const result = await func(editor, fromShapePacked, toShapePacked, this.geo, bounds, DeltaTime.dt, unpackShape);
       if (result) {
         editor.updateShape(unpackShape({ ...toShapePacked, ...result }))
       }
@@ -232,17 +233,17 @@ export abstract class Propagator {
   }
 
   /** called after every shape change */
-  afterChangeHandler?(editor: Editor, next: TLShape): void
+  afterChangeHandler?(editor: Editor, next: TLShape): Promise<void>
   /** called on every editor event */
-  eventHandler?(event: any): void
+  eventHandler?(event: any): Promise<void>
   /** called every tick */
-  tickHandler?(): void
+  tickHandler?(): Promise<void>
 }
 
 export class ClickPropagator extends Propagator {
   prefix: Prefix = 'click'
 
-  eventHandler(event: any): void {
+  async eventHandler(event: any): Promise<void> {
     if (event.type !== 'pointer' || event.name !== 'pointer_down') return;
     const shapeAtPoint = this.editor.getShapeAtPoint(this.editor.inputs.currentPagePoint, { filter: (shape) => shape.type === 'geo' });
     if (!shapeAtPoint) return
@@ -252,7 +253,7 @@ export class ClickPropagator extends Propagator {
     const visited = new Set<TLShapeId>()
     for (const edge of edgesFromHovered) {
       if (this.listenerArrows.has(edge) && !visited.has(edge)) {
-        this.propagate(this.editor, edge)
+        await this.propagate(this.editor, edge)
         visited.add(edge)
       }
     }
@@ -262,7 +263,7 @@ export class ClickPropagator extends Propagator {
 export class ChangePropagator extends Propagator {
   prefix: Prefix = ''
 
-  afterChangeHandler(editor: Editor, next: TLShape): void {
+  async afterChangeHandler(editor: Editor, next: TLShape): Promise<void> {
     if (this.listenerShapes.has(next.id)) {
       const arrowsFromShape = getArrowsFromShape(editor, next.id)
       for (const arrow of arrowsFromShape) {
@@ -271,7 +272,7 @@ export class ChangePropagator extends Propagator {
           if (bindings.length !== 2) continue
           // don't run func if its pointing to itself to avoid change-induced recursion error
           if (bindings[0].toId === bindings[1].toId) continue
-          this.propagate(editor, arrow)
+          await this.propagate(editor, arrow)
         }
       }
     }
@@ -282,9 +283,9 @@ export class TickPropagator extends Propagator {
   prefix: Prefix = 'tick'
   validateOnArrowChange = true
 
-  tickHandler(): void {
+  async tickHandler(): Promise<void> {
     for (const arrow of this.listenerArrows) {
-      this.propagate(this.editor, arrow)
+      await this.propagate(this.editor, arrow)
     }
   }
 }
@@ -293,10 +294,10 @@ export class SpatialPropagator extends Propagator {
   prefix: Prefix = 'geo'
 
   // TODO: make this smarter, and scale sublinearly
-  afterChangeHandler(editor: Editor, next: TLShape): void {
+  async afterChangeHandler(editor: Editor, next: TLShape): Promise<void> {
     if (next.type === 'arrow') return
     for (const arrowId of this.listenerArrows) {
-      this.propagate(editor, arrowId)
+      await this.propagate(editor, arrowId)
     }
   }
 }

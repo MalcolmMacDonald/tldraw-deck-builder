@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'path'
 
 export default defineConfig({
-  base: '/scoped-propagators/',
+  base: '/async-scoped-propagators/',
   plugins: [react()],
   resolve: {
     alias: {

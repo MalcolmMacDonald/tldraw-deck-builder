@@ -1,7 +1,11 @@
-import { Editor, TLArrowShape, Tldraw } from 'tldraw'
+import {
+	Editor, loadSnapshot,
+	Tldraw, TLSessionStateSnapshot,
+	TLStoreSnapshot,
+} from 'tldraw'
 import { CustomMainMenu } from '@/CustomMainMenu'
 import { ClickPropagator, ChangePropagator, TickPropagator, SpatialPropagator, registerPropagators } from '@/propagators/ScopedPropagators'
-
+import initialSnapshot  from '@/InitialState.json';
 export default function YjsExample() {
 	return (
 		<div className="tldraw__editor">
@@ -10,19 +14,19 @@ export default function YjsExample() {
 					MainMenu: CustomMainMenu,
 				}}
 				onMount={onMount}
-				persistenceKey='scoped-propagators'
+				snapshot={initialSnapshot.document as TLStoreSnapshot}
+				persistenceKey='async-async-scoped-propagators'
 			/>
 		</div>
 	)
 }
 
-function onMount(editor: Editor) {
+ function onMount(editor: Editor) {
 	//@ts-expect-error
 	window.editor = editor
 	// stop double click text creation
-	//@ts-expect-error
+ 	// @ts-expect-error
 	editor.getStateDescendant('select.idle').handleDoubleClickOnCanvas = () => void null;
-
 	registerPropagators(editor, [
 		ChangePropagator,
 		ClickPropagator,
