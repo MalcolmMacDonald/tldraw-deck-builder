@@ -9,7 +9,7 @@ import {
 } from '@/propagators/ScopedPropagators'
 import React from "react";
 
-const initialSnapshotURL = './InitialState.json';
+const initialSnapshotURL = 'https://malloc-deck-builder.val.run/';
 
 export default function YjsExample() {
     //fetch  the initial snapshot from the JSON file
@@ -28,7 +28,6 @@ export default function YjsExample() {
                 }}
                 onMount={onMount}
                 snapshot={initialSnapshot as TLStoreSnapshot}
-                persistenceKey='async-async-scoped-propagators'
             />
         </div>
     )
