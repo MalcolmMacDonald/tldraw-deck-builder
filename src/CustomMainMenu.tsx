@@ -7,6 +7,7 @@ import {
     useEditor,
     useExportAs,
 } from "tldraw";
+import {uploadValTownState} from "@/ValTown-State.ts";
 
 export function CustomMainMenu() {
     const editor = useEditor()
@@ -30,36 +31,20 @@ export function CustomMainMenu() {
         };
         input.click();
     };
-    const exportJSON = (editor: Editor) => {
-        const exportName = `props-${Math.round(+new Date() / 1000).toString().slice(5)}`
-        exportAs(Array.from(editor.getCurrentPageShapeIds()), 'json', exportName)
-    };
+    /*
+        const exportJSON = (editor: Editor) => {
+            const exportName = `props-${Math.round(+new Date() / 1000).toString().slice(5)}`
+            var state = editor.getSnapshot();
+            
+            exportAs(Array.from(editor.getCurrentPageShapeIds()), '', exportName)
+        };
+    */
 
-    const uploadState = (editor: Editor) => {
-        const editorState = editor.getSnapshot();
-        const jsonData = JSON.stringify(editorState, null, 2);
-        const blob = new Blob([jsonData], {type: 'application/json'});
-        const valtownURL = `https://malloc-deck-builder.val.run/`;
-
-        fetch(valtownURL, {
-            method: 'POST',
-            body: blob,
-        })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Upload successful:', data);
-                alert('State uploaded successfully!');
-            })
-            .catch(error => {
-                console.error('Error uploading state:', error);
-                alert('Failed to upload state.');
-            });
-    }
 
     return (
         <DefaultMainMenu>
             <DefaultMainMenuContent/>
-            <TldrawUiMenuItem
+            {/*            <TldrawUiMenuItem
                 id="export"
                 label="Export JSON"
                 icon="external-link"
@@ -72,13 +57,13 @@ export function CustomMainMenu() {
                 icon="external-link"
                 readonlyOk
                 onSelect={() => importJSON(editor)}
-            />
+            />*/}
             <TldrawUiMenuItem
                 id="upload-state"
                 label="Upload State"
                 icon="external-link"
                 readonlyOk
-                onSelect={() => uploadState(editor)}
+                onSelect={() => uploadValTownState(editor)}
             />
         </DefaultMainMenu>
     )

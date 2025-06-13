@@ -8,16 +8,16 @@ import {
     TickPropagator
 } from '@/propagators/ScopedPropagators'
 import React from "react";
-
-const initialSnapshotURL = 'https://malloc-deck-builder.val.run/';
+import loadValTownState from "@/ValTown-State.ts";
 
 export default function YjsExample() {
     //fetch  the initial snapshot from the JSON file
-    const [initialSnapshot, setInitialSnapshot] = React.useState<TLStoreSnapshot | null>(null)
+    const [initialSnapshot, setInitialSnapshot] = React.useState<TLStoreSnapshot | null>(null);
     React.useEffect(() => {
-        fetch(initialSnapshotURL)
-            .then(response => response.json())
-            .then(data => setInitialSnapshot(data as TLStoreSnapshot))
+        loadValTownState()
+            .then(snapshot => {
+                setInitialSnapshot(snapshot);
+            })
             .catch(error => console.error('Error fetching initial snapshot:', error));
     }, []);
     return (
@@ -27,13 +27,14 @@ export default function YjsExample() {
                     MainMenu: CustomMainMenu,
                 }}
                 onMount={onMount}
-                snapshot={initialSnapshot as TLStoreSnapshot}
+                snapshot={initialSnapshot}
             />
         </div>
     )
 }
 
 function onMount(editor: Editor) {
+    
     //@ts-expect-error
     window.editor = editor
     // stop double click text creation
