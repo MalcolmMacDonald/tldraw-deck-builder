@@ -2,7 +2,7 @@ import {DeltaTime} from "@/propagators/DeltaTime"
 import {Geo} from "@/propagators/Geo"
 import {Edge, getArrowsFromShape, getEdge} from "@/propagators/tlgraph"
 import {isShapeOfType} from "@/propagators/utils"
-import {Editor, TLArrowShape, TLBinding, TLGroupShape, TLRichText, TLShape, TLShapeId} from "tldraw"
+import {Editor, TLArrowShape, TLBinding, TLGroupShape, TLShape, TLShapeId} from "tldraw"
 import {AsyncFunction} from "@/propagators/AsyncFunction"
 
 type Prefix = 'click' | 'tick' | 'geo' | ''
@@ -67,7 +67,6 @@ class ArrowFunctionCache {
 
 
 const packShape = (shape: TLShape) => {
-
     return {
         id: shape.id,
         type: shape.type,
@@ -76,43 +75,6 @@ const packShape = (shape: TLShape) => {
         rotation: shape.rotation,
         ...shape.props,
         m: shape.meta,
-        code: shape.meta.code,
-        text: shape.props['richText'] ? fromRichText(shape.props['richText']) : undefined,
-    }
-}
-const fromRichText = (richText: TLRichText): string => {
-
-    return richText.content.map((paragraph) => {
-        if (!paragraph || !paragraph['type']) return ''
-        if (paragraph['type'] === 'paragraph' && paragraph['content']) {
-            return paragraph['content'].map((textNode) => {
-                if (textNode.type === 'text' && textNode.text) {
-                    return textNode.text;
-                }
-            }).join('\n')
-        }
-        return ''
-    }).join('');
-}
-
-function toRichText(text: string, marks?: object[]): TLRichText {
-    const lines = text.split('\n')
-    const content = lines.map((text) => {
-        if (!text) {
-            return {
-                type: 'paragraph',
-            }
-        }
-
-        return {
-            type: 'paragraph',
-            content: [{type: 'text', text, marks: marks || []}],
-        }
-    })
-
-    return {
-        type: 'doc',
-        content,
     }
 }
 
@@ -122,25 +84,6 @@ const unpackShape = (shape: any) => {
     const cast = (prop: any, constructor: (value: any) => any) => {
         return prop !== undefined ? constructor(prop) : undefined;
     };
-    if (props.text !== undefined) {
-        props.richText = toRichText(props.text);
-    }
-
-    if (props.color == 'light-blue') {
-        props.richText = toRichText(props.text, [{type: 'code'}]);
-    }
-    delete props.text;
-
-    //copy the meta
-    let outMeta = {
-        ...m,
-    };
-    if (props.code !== undefined) {
-        outMeta.code = props.code;
-    }
-    delete props.code;
-
-
     return {
         id,
         type,
@@ -149,8 +92,9 @@ const unpackShape = (shape: any) => {
         rotation: Number(rotation),
         props: {
             ...props,
+            text: cast(props.text, String),
         },
-        meta: outMeta,
+        meta: m,
     }
 }
 

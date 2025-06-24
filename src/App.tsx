@@ -1,5 +1,4 @@
 import {Editor, Tldraw, TLStoreSnapshot,} from 'tldraw'
-import {CustomMainMenu} from '@/CustomMainMenu'
 import {
     ChangePropagator,
     ClickPropagator,
@@ -8,13 +7,14 @@ import {
     TickPropagator
 } from '@/propagators/ScopedPropagators'
 import React from "react";
-import loadValTownState from "@/ValTown-State.ts";
+import {CustomMainMenu, CustomShortcuts, LoadValTownState} from "@/ValTown-State.tsx";
+import {CustomComponents} from "@/CustomContextActionsMenu.tsx";
 
 export default function YjsExample() {
     //fetch  the initial snapshot from the JSON file
     const [initialSnapshot, setInitialSnapshot] = React.useState<TLStoreSnapshot | null>(null);
     React.useEffect(() => {
-        loadValTownState()
+        LoadValTownState()
             .then(snapshot => {
                 setInitialSnapshot(snapshot);
             })
@@ -25,7 +25,12 @@ export default function YjsExample() {
             <Tldraw
                 components={{
                     MainMenu: CustomMainMenu,
+                    InFrontOfTheCanvas: CustomComponents,
+
                 }}
+                overrides={
+                    CustomShortcuts
+                }
                 onMount={onMount}
                 snapshot={initialSnapshot}
             />
@@ -34,7 +39,7 @@ export default function YjsExample() {
 }
 
 function onMount(editor: Editor) {
-    
+
     //@ts-expect-error
     window.editor = editor
     // stop double click text creation
