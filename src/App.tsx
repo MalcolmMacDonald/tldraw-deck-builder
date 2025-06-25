@@ -1,14 +1,8 @@
 import {Editor, Tldraw, TLStoreSnapshot,} from 'tldraw'
-import {
-    ChangePropagator,
-    ClickPropagator,
-    registerPropagators,
-    SpatialPropagator,
-    TickPropagator
-} from '@/propagators/ScopedPropagators'
+import {registerDefaultPropagators} from '@/propagators/ScopedPropagators'
 import React from "react";
 import {CustomMainMenu, CustomShortcuts, LoadValTownState} from "@/ValTown-State.tsx";
-import {CustomComponents} from "@/CustomContextActionsMenu.tsx";
+import {CustomComponents} from "@/propagators/ShapeActionsButtons";
 
 export default function YjsExample() {
     //fetch  the initial snapshot from the JSON file
@@ -45,10 +39,5 @@ function onMount(editor: Editor) {
     // stop double click text creation
     // @ts-expect-error
     editor.getStateDescendant('select.idle').handleDoubleClickOnCanvas = () => void null;
-    registerPropagators(editor, [
-        ChangePropagator,
-        ClickPropagator,
-        TickPropagator,
-        SpatialPropagator,
-    ])
+    registerDefaultPropagators(editor);
 }

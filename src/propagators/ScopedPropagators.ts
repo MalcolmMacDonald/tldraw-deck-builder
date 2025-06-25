@@ -5,7 +5,12 @@ import {isShapeOfType} from "@/propagators/utils"
 import {Editor, TLArrowShape, TLBinding, TLGroupShape, TLShape, TLShapeId} from "tldraw"
 import {AsyncFunction} from "@/propagators/AsyncFunction"
 
-type Prefix = 'click' | 'tick' | 'geo' | ''
+export type Prefix = 'button' | 'click' | 'tick' | 'geo' | ''
+export type ShapeAction = {
+    name: string
+    code: string
+    scope: Prefix
+}
 
 export async function registerDefaultPropagators(editor: Editor) {
     await registerPropagators(editor, [
@@ -13,15 +18,19 @@ export async function registerDefaultPropagators(editor: Editor) {
         ClickPropagator,
         TickPropagator,
         SpatialPropagator,
+        ButtonPropagator
     ])
 }
 
+// check for propagator prefix in arrow text
 function isPropagatorOfType(arrow: TLShape, prefix: Prefix) {
     if (!isShapeOfType<TLArrowShape>(arrow, 'arrow')) return false
     const regex = new RegExp(`^\\s*${prefix}\\s*\\{`)
     return regex.test(arrow.props.text)
 }
 
+
+//check for parenthesis and curly braces
 function isExpandedPropagatorOfType(arrow: TLShape, prefix: Prefix) {
     if (!isShapeOfType<TLArrowShape>(arrow, 'arrow')) return false
     const regex = new RegExp(`^\\s*${prefix}\\s*\\(\\)\\s*\\{`)
@@ -109,6 +118,10 @@ function setArrowColor(editor: Editor, arrow: TLArrowShape, color: TLArrowShape[
     })
 }
 
+function getShapeActions(shape: TLShape): ShapeAction[] {
+    return shape.meta['actions'] as ShapeAction[] || []
+}
+
 export async function registerPropagators(editor: Editor, propagators: (new (editor: Editor) => Propagator)[]) {
     const _propagators = propagators.map((PropagatorClass) => new PropagatorClass(editor))
 
@@ -133,12 +146,12 @@ export async function registerPropagators(editor: Editor, propagators: (new (edi
             }
         })
 
-        function updateOnBindingChange(editor: Editor, binding: TLBinding) {
+        async function updateOnBindingChange(editor: Editor, binding: TLBinding) {
             if (binding.type !== 'arrow') return
             const arrow = editor.getShape(binding.fromId)
             if (!arrow) return
             if (!isShapeOfType<TLArrowShape>(arrow, 'arrow')) return
-            prop.onArrowChange(editor, arrow)
+            await prop.onArrowChange(editor, arrow)
         }
 
         // TODO: remove this when binding creation
@@ -151,10 +164,10 @@ export async function registerPropagators(editor: Editor, propagators: (new (edi
         })
 
         editor.on('event', async (event) => {
-            prop.eventHandler?.(event)
+            await prop.eventHandler?.(event)
         })
         editor.on('tick', async () => {
-            prop.tickHandler?.()
+            await prop.tickHandler?.()
         })
     }
 }
@@ -212,6 +225,7 @@ export abstract class Propagator {
 
         try {
             const func = this.arrowFunctionCache.get(editor, edge, this.prefix);
+            setArrowColor(editor, arrowShape, 'green');
             const result = await func(editor, fromShapePacked, toShapePacked, this.geo, bounds, DeltaTime.dt, unpackShape);
             if (result) {
                 editor.updateShape(unpackShape({...toShapePacked, ...result}))
@@ -308,5 +322,10 @@ export class SpatialPropagator extends Propagator {
             await this.propagate(editor, arrowId)
         }
     }
+}
+
+export class ButtonPropagator extends Propagator {
+    prefix: Prefix = 'button'
+
 }
 

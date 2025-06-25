@@ -1,19 +1,17 @@
-﻿import {stopEventPropagation, useEditor, useValue,} from 'tldraw'
+﻿import {stopEventPropagation, TLShape, useEditor, useValue,} from 'tldraw'
 import 'tldraw/tldraw.css'
+import {ShapeAction} from '@/propagators/ScopedPropagators'
 
-type ShapeAction = {
-    name: string
-    code: string
-}
+
 //shape actions array:
-type ShapeActions = ShapeAction[]
 type SelectionInfo = {
     x: number
     y: number
     width: number
     height: number
     rotation: number
-    actions: ShapeActions
+    actions: ShapeAction[]
+    shapes: TLShape[]
 }
 
 export function CustomComponents() {
@@ -27,9 +25,9 @@ export function CustomComponents() {
             const rotation = editor.getSelectionRotation()
             const rotatedScreenBounds = editor.getSelectionRotatedScreenBounds()
             const shapes = editor.getSelectedShapes();
-            const shapeActions: ShapeActions = shapes.map(shape => {
-                return shape.meta['actions'] as ShapeActions || []
-            }).flat();
+            const shapeActions: ShapeAction[] = shapes.map(shape => {
+                return shape.meta['actions'] as ShapeAction[] || []
+            }).flat().filter(action => action.scope === 'button');
             if (!rotatedScreenBounds) return
             return {
                 // we really want the position within the
@@ -40,6 +38,7 @@ export function CustomComponents() {
                 height: rotatedScreenBounds.height,
                 rotation: rotation,
                 actions: shapeActions,
+                shapes: shapes,
             }
         },
         [editor]
@@ -58,8 +57,11 @@ export function CustomComponents() {
             }}
             onPointerDown={stopEventPropagation}
             onClick={() => {
-                //@ts-expect-error
-                editor.run(new Function(action.code))
+                editor.run(() => {
+                        new Function(action.code)();
+                        editor.updateShapes(info.shapes);
+                    }
+                )
             }}
         >
             {action.name}
