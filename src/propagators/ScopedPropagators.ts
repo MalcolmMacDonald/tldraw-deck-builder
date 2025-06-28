@@ -8,9 +8,12 @@ import {AsyncFunction} from "@/propagators/AsyncFunction"
 export type Prefix = 'button' | 'click' | 'tick' | 'geo' | ''
 export type ShapeAction = {
     name: string
+    func: AsyncFunction
+    shapeID: TLShapeId,
     code: string
     scope: Prefix
 }
+
 
 export async function registerDefaultPropagators(editor: Editor) {
     await registerPropagators(editor, [
@@ -36,6 +39,28 @@ function isExpandedPropagatorOfType(arrow: TLShape, prefix: Prefix) {
     const regex = new RegExp(`^\\s*${prefix}\\s*\\(\\)\\s*\\{`)
     return regex.test(arrow.props.text)
 }
+
+export function getShapeActions(shape: TLShape): ShapeAction[] {
+    if (!Array.isArray(shape.meta.actions)) return []
+    return shape.meta.actions.map((action: any): ShapeAction => {
+        //test if action code is a json
+        const regex = new RegExp(`^\\s*\\(\\)\\s*\\{`);
+        const isExpanded = regex.test(action.code)
+        const body = isExpanded ? action.code.trim().replace(/^\s*\(\)\s*{|}$/g, '') : `
+            const mapping = ${action.code}
+            editor.updateShape(_unpack({...from, ...mapping}))
+        `
+        const func = new AsyncFunction('editor', 'from', 'to', 'G', 'bounds', 'dt', '_unpack', body);
+        return {
+            name: action.name,
+            func: func,
+            scope: action.scope as Prefix,
+            shapeID: shape.id,
+            code: action.code,
+        }
+    });
+}
+
 
 class ArrowFunctionCache {
     private cache: Map<string, AsyncFunction | null> = new Map<string, AsyncFunction | null>()
@@ -75,7 +100,7 @@ class ArrowFunctionCache {
 }
 
 
-const packShape = (shape: TLShape) => {
+export const packShape = (shape: TLShape) => {
     return {
         id: shape.id,
         type: shape.type,
@@ -88,7 +113,7 @@ const packShape = (shape: TLShape) => {
 }
 
 
-const unpackShape = (shape: any) => {
+export const unpackShape = (shape: any) => {
     const {id, type, x, y, rotation, m, ...props} = shape
     const cast = (prop: any, constructor: (value: any) => any) => {
         return prop !== undefined ? constructor(prop) : undefined;
@@ -118,9 +143,6 @@ function setArrowColor(editor: Editor, arrow: TLArrowShape, color: TLArrowShape[
     })
 }
 
-function getShapeActions(shape: TLShape): ShapeAction[] {
-    return shape.meta['actions'] as ShapeAction[] || []
-}
 
 export async function registerPropagators(editor: Editor, propagators: (new (editor: Editor) => Propagator)[]) {
     const _propagators = propagators.map((PropagatorClass) => new PropagatorClass(editor))

@@ -1,6 +1,8 @@
 ﻿import {stopEventPropagation, TLShape, useEditor, useValue,} from 'tldraw'
 import 'tldraw/tldraw.css'
-import {ShapeAction} from '@/propagators/ScopedPropagators'
+import {getShapeActions, packShape, ShapeAction, unpackShape} from '@/propagators/ScopedPropagators'
+import {Geo} from "@/propagators/Geo.ts";
+import {DeltaTime} from "@/propagators/DeltaTime.ts";
 
 
 //shape actions array:
@@ -16,6 +18,7 @@ type SelectionInfo = {
 
 export function CustomComponents() {
     const editor = useEditor()
+    const geo = new Geo(editor);
 
 
     const info: SelectionInfo = useValue(
@@ -25,10 +28,10 @@ export function CustomComponents() {
             const rotation = editor.getSelectionRotation()
             const rotatedScreenBounds = editor.getSelectionRotatedScreenBounds()
             const shapes = editor.getSelectedShapes();
-            const shapeActions: ShapeAction[] = shapes.map(shape => {
-                return shape.meta['actions'] as ShapeAction[] || []
-            }).flat().filter(action => action.scope === 'button');
-            if (!rotatedScreenBounds) return
+            const shapeActions: ShapeAction[] = shapes.map(getShapeActions).flat()
+                .filter(action => action.scope === 'button');
+            if (shapeActions.length === 0) return null
+            if (!rotatedScreenBounds) return null
             return {
                 // we really want the position within the
                 // tldraw component's bounds, not the screen itself
@@ -45,8 +48,9 @@ export function CustomComponents() {
     )
 
     if (!info) return
+    if (info.actions == null || info.actions.length === 0) return null;
 
-    const actionButtons = info.actions.length === 0 ? null : info.actions.map((action, index) => (
+    const actionButtons = info.actions.map((action, index) => (
         <button
             key={index}
             style={{
@@ -57,12 +61,28 @@ export function CustomComponents() {
             }}
             onPointerDown={stopEventPropagation}
             onClick={() => {
-                editor.run(() => {
-                        new Function(action.code)();
-                        editor.updateShapes(info.shapes);
+                editor.run(async () => {
+                    for (const action of info.actions) {
+                        const actionShape = editor.getShape(action.shapeID);
+                        const bounds = editor.getShapePageBounds(action.shapeID);
+                        const toShapePacked = packShape(actionShape);
+                        if (!actionShape || !bounds) continue;
+                        try {
+
+                            const result = await action.func(editor, toShapePacked, toShapePacked, geo, bounds, DeltaTime.dt, unpackShape);
+                            if (result) {
+                                editor.updateShape(unpackShape({
+                                    ...toShapePacked,
+                                    ...result
+                                }))
+                            }
+                        } catch (e) {
+                            console.error(`Error executing action ${action.name} on shape ${actionShape.id}`, e);
+                        }
                     }
-                )
-            }}
+                });
+            }
+            }
         >
             {action.name}
         </button>
