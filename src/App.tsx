@@ -4,17 +4,20 @@ import React from "react";
 import {CustomMainMenu, CustomShortcuts, LoadValTownState} from "@/ValTown-State.tsx";
 import {CustomComponents} from "@/propagators/ShapeActionsButtons";
 import {isShapeOfType} from "@/propagators/utils.ts";
+import {version} from '../package.json';
 
 export default function YjsExample() {
     //fetch  the initial snapshot from the JSON file
-    const [initialSnapshot, setInitialSnapshot] = React.useState<TLStoreSnapshot | null>(null);
+    /*const [initialSnapshot, setInitialSnapshot] = React.useState<TLStoreSnapshot | null>(null);
     React.useEffect(() => {
         LoadValTownState()
             .then(snapshot => {
+                if(snapshot){
                 setInitialSnapshot(snapshot);
+                }
             })
             .catch(error => console.error('Error fetching initial snapshot:', error));
-    }, []);
+    }, []);*/
     return (
         <div className="tldraw__editor">
             <Tldraw
@@ -30,7 +33,8 @@ export default function YjsExample() {
                     CustomShortcuts
                 }
                 onMount={onMount}
-                snapshot={initialSnapshot}
+               // snapshot={initialSnapshot}
+                persistenceKey={`tldraw-deck-builder-${version}`}   
             />
         </div>
     )

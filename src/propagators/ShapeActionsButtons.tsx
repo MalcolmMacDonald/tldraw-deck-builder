@@ -69,7 +69,7 @@ export function CustomComponents() {
                         if (!actionShape || !bounds) continue;
                         try {
 
-                            const result = await action.func(editor, toShapePacked, toShapePacked, geo, bounds, DeltaTime.dt, unpackShape);
+                            const result = await action.func(editor, toShapePacked, toShapePacked, geo, bounds, DeltaTime.dt, unpackShape,packShape);
                             if (result) {
                                 editor.updateShape(unpackShape({
                                     ...toShapePacked,
