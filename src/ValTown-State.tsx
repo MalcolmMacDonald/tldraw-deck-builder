@@ -14,15 +14,23 @@
 import {version} from '../package.json';
 import React from "react";
 
+
+export var hasSavedState = false; // Flag to indicate if the state has been saved
+
 const blobIDKey = 'blobID';
-const initialSnapshotURL = `https://malloc-deck-builder.val.run/?${blobIDKey}=tldraw-deck-builder-${version}`;
+export const snapshotKey = `tldraw-deck-builder-${version}`;
+const initialSnapshotURL = `https://malloc-deck-builder.val.run/?${blobIDKey}=${snapshotKey}`;
+const initialTitle = window.document.title;
 
+export function setSavedState(saved: boolean) {
+    hasSavedState = saved;
+    window.document.title = saved ? initialTitle : `${initialTitle} *`;
+}
 
-export async function LoadValTownState() {
+export async function LoadValTownState(): Promise<TLStoreSnapshot> | null {
     try {
         let response = await fetch(initialSnapshotURL);
-        let data: any = await response.json();
-        return data as TLStoreSnapshot;
+        return await response.json() as TLStoreSnapshot;
     } catch (error) {
         console.error('Error fetching initial snapshot:', error);
         return null;
@@ -83,6 +91,7 @@ function uploadValTownState(editor: Editor, helpers: ReturnType<typeof useDefaul
                 description: 'State uploaded successfully!',
                 severity: 'info'
             });
+            setSavedState(true); // Set the flag to true after a successful upload
         })
         .catch(error => {
             console.error('Error uploading state:', error);

@@ -1,23 +1,21 @@
 import {Editor, TLArrowBinding, TLArrowShape, Tldraw, TLShape, TLStoreSnapshot} from 'tldraw'
 import {registerDefaultPropagators} from '@/propagators/ScopedPropagators'
 import React from "react";
-import {CustomMainMenu, CustomShortcuts, LoadValTownState} from "@/ValTown-State.tsx";
+import {CustomMainMenu, CustomShortcuts, LoadValTownState, setSavedState, snapshotKey} from "@/ValTown-State.tsx";
 import {CustomComponents} from "@/propagators/ShapeActionsButtons";
 import {isShapeOfType} from "@/propagators/utils.ts";
-import {version} from '../package.json';
 
 export default function YjsExample() {
     //fetch  the initial snapshot from the JSON file
-    /*const [initialSnapshot, setInitialSnapshot] = React.useState<TLStoreSnapshot | null>(null);
+    const [initialSnapshot, setInitialSnapshot] = React.useState<TLStoreSnapshot | null>(null);
+
     React.useEffect(() => {
         LoadValTownState()
-            .then(snapshot => {
-                if(snapshot){
-                setInitialSnapshot(snapshot);
-                }
+            .then(valTownSnapshot => {
+                setInitialSnapshot(valTownSnapshot);
             })
             .catch(error => console.error('Error fetching initial snapshot:', error));
-    }, []);*/
+    }, []);
     return (
         <div className="tldraw__editor">
             <Tldraw
@@ -33,8 +31,8 @@ export default function YjsExample() {
                     CustomShortcuts
                 }
                 onMount={onMount}
-               // snapshot={initialSnapshot}
-                persistenceKey={`tldraw-deck-builder-${version}`}   
+                snapshot={initialSnapshot}
+                persistenceKey={snapshotKey}
             />
         </div>
     )
@@ -52,6 +50,10 @@ function arrowIsHidden(shape: TLShape, editor: Editor) {
 }
 
 function onMount(editor: Editor) {
+    setSavedState(true);
+    editor.store.listen(() => {
+        setSavedState(false);
+    }, {scope: 'document', source: 'user'});
 
     //@ts-expect-error
     window.editor = editor

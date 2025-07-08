@@ -57,28 +57,26 @@ export function CustomComponents() {
                 pointerEvents: 'all',
                 width: 'fit-content',
                 height: 'fit-content',
-                margin: '0 4px',
+                margin: '4px 4px',
             }}
             onPointerDown={stopEventPropagation}
             onClick={() => {
                 editor.run(async () => {
-                    for (const action of info.actions) {
-                        const actionShape = editor.getShape(action.shapeID);
-                        const bounds = editor.getShapePageBounds(action.shapeID);
-                        const toShapePacked = packShape(actionShape);
-                        if (!actionShape || !bounds) continue;
-                        try {
+                    const actionShape = editor.getShape(action.shapeID);
+                    const bounds = editor.getShapePageBounds(action.shapeID);
+                    const toShapePacked = packShape(actionShape);
+                    if (!actionShape || !bounds) return;
+                    try {
 
-                            const result = await action.func(editor, toShapePacked, toShapePacked, geo, bounds, DeltaTime.dt, unpackShape,packShape);
-                            if (result) {
-                                editor.updateShape(unpackShape({
-                                    ...toShapePacked,
-                                    ...result
-                                }))
-                            }
-                        } catch (e) {
-                            console.error(`Error executing action ${action.name} on shape ${actionShape.id}`, e);
+                        const result = await action.func(editor, toShapePacked, toShapePacked, geo, bounds, DeltaTime.dt, unpackShape, packShape);
+                        if (result) {
+                            editor.updateShape(unpackShape({
+                                ...toShapePacked,
+                                ...result
+                            }))
                         }
+                    } catch (e) {
+                        console.error(`Error executing action ${action.name} on shape ${actionShape.id}`, e);
                     }
                 });
             }
@@ -100,7 +98,7 @@ export function CustomComponents() {
                 width: info.width,
                 height: 'fit-content',
                 display: 'flex',
-                flexDirection: 'row',
+                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
 
