@@ -20,8 +20,7 @@ export async function registerDefaultPropagators(editor: Editor) {
         ChangePropagator,
         ClickPropagator,
         TickPropagator,
-        SpatialPropagator,
-        ButtonPropagator
+        SpatialPropagator
     ])
 }
 
@@ -154,7 +153,6 @@ function setArrowColor(editor: Editor, arrow: TLArrowShape, color: TLArrowShape[
 
 export async function registerPropagators(editor: Editor, propagators: (new (editor: Editor) => Propagator)[]) {
     const _propagators = propagators.map((PropagatorClass) => new PropagatorClass(editor))
-    editor.updateShape
     for (const prop of _propagators) {
         for (const shape of editor.getCurrentPageShapes()) {
             if (isShapeOfType<TLArrowShape>(shape, 'arrow')) {
@@ -176,12 +174,12 @@ export async function registerPropagators(editor: Editor, propagators: (new (edi
             }
         })
 
-        async function updateOnBindingChange(editor: Editor, binding: TLBinding) {
+        function updateOnBindingChange(editor: Editor, binding: TLBinding) {
             if (binding.type !== 'arrow') return
             const arrow = editor.getShape(binding.fromId)
             if (!arrow) return
             if (!isShapeOfType<TLArrowShape>(arrow, 'arrow')) return
-            await prop.onArrowChange(editor, arrow)
+            prop.onArrowChange(editor, arrow)
         }
 
         // TODO: remove this when binding creation
@@ -352,10 +350,5 @@ export class SpatialPropagator extends Propagator {
             await this.propagate(editor, arrowId)
         }
     }
-}
-
-export class ButtonPropagator extends Propagator {
-    prefix: Prefix = 'button'
-
 }
 

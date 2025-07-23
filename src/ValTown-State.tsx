@@ -84,9 +84,6 @@ export function uploadValTownState(editor: Editor, helpers: ReturnType<typeof us
     })
         .then(response => response.json())
         .then(data => {
-            if (!data || !data.success) {
-                throw new Error('Upload failed: ' + (data?.message || 'Unknown error'));
-            }
             if (helpers !== undefined) {
                 helpers.addToast({
                     title: 'Upload Successful',
