@@ -295,7 +295,7 @@ export class ClickPropagator extends Propagator {
 
     async eventHandler(event: any): Promise<void> {
         if (event.type !== 'pointer' || event.name !== 'pointer_down') return;
-        const shapeAtPoint = this.editor.getShapeAtPoint(this.editor.inputs.currentPagePoint, {filter: (shape) => shape.type === 'geo'});
+        const shapeAtPoint = this.editor.getShapeAtPoint(this.editor.inputs.currentPagePoint);
         if (!shapeAtPoint) return
         if (!this.listenerShapes.has(shapeAtPoint.id)) return
         const edgesFromHovered = getArrowsFromShape(this.editor, shapeAtPoint.id)

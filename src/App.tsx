@@ -5,6 +5,7 @@ import {CustomMainMenu, CustomShortcuts, hasSavedState, LoadValTownState, setSav
 import {CustomComponents} from "@/propagators/ShapeActionsButtons";
 import {isShapeOfType} from "@/propagators/utils.ts";
 import {GetDBSnapshot} from "@/propagators/LocalDBState.ts";
+import {embeds} from "@/scryfall-card-embed.ts";
 
 
 export default function YjsExample() {
@@ -74,6 +75,7 @@ export default function YjsExample() {
                 onMount={onMount}
                 persistenceKey={snapshotKey}
                 snapshot={snapshot}
+                embeds={embeds}
             />
         </div>
     )
