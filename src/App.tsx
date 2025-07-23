@@ -1,21 +1,62 @@
-import {Editor, TLArrowBinding, TLArrowShape, Tldraw, TLShape, TLStoreSnapshot} from 'tldraw'
+import {Editor, TLArrowBinding, TLArrowShape, Tldraw, TLShape} from 'tldraw'
 import {registerDefaultPropagators} from '@/propagators/ScopedPropagators'
-import React from "react";
-import {CustomMainMenu, CustomShortcuts, LoadValTownState, setSavedState, snapshotKey} from "@/ValTown-State.tsx";
+import React, {useEffect, useState} from "react";
+import {CustomMainMenu, CustomShortcuts, hasSavedState, LoadValTownState, setSavedState, snapshotKey, uploadValTownState} from "@/ValTown-State.tsx";
 import {CustomComponents} from "@/propagators/ShapeActionsButtons";
 import {isShapeOfType} from "@/propagators/utils.ts";
+import {GetDBSnapshot} from "@/propagators/LocalDBState.ts";
+
 
 export default function YjsExample() {
     //fetch  the initial snapshot from the JSON file
-    const [initialSnapshot, setInitialSnapshot] = React.useState<TLStoreSnapshot | null>(null);
 
-    React.useEffect(() => {
-        LoadValTownState()
-            .then(valTownSnapshot => {
-                setInitialSnapshot(valTownSnapshot);
-            })
-            .catch(error => console.error('Error fetching initial snapshot:', error));
+
+    const [snapshot, setSnapshot] = useState(null)
+
+    useEffect(() => {
+        let cancelled = false
+
+        console.log('Loading initial snapshot...');
+        Promise.all([GetDBSnapshot(), LoadValTownState()]).then(([dbSnapshot, valTownSnapshot]) => {
+
+            if (!dbSnapshot && valTownSnapshot) {
+                console.log('Using ValTown snapshot as fallback');
+                setSnapshot(valTownSnapshot.snapshot);
+                return;
+            } else if (dbSnapshot && !valTownSnapshot) {
+                console.log('Using local DB snapshot as fallback');
+                setSnapshot(dbSnapshot.snapshot);
+                return;
+            } else if (!dbSnapshot && !valTownSnapshot) {
+                console.error('No snapshots available, cannot load editor state');
+                return;
+            }
+
+
+            if (cancelled) {
+                console.log('Loading cancelled');
+                return;
+            }
+            const dbUpdatedAt = new Date(dbSnapshot.updatedAt);
+            const valtownUpdatedAt = new Date(valTownSnapshot.updatedAt + 10);//new Date(valTownSnapshot.updatedAt);
+
+            if (dbUpdatedAt > valtownUpdatedAt) {
+                console.log('Using local DB snapshot:', dbSnapshot.id, 'at', dbUpdatedAt);
+                setSnapshot(dbSnapshot.snapshot);
+            } else {
+                console.log('Using ValTown snapshot');
+                setSnapshot(valTownSnapshot.snapshot);
+            }
+        });
+
+        return () => {
+            console.log('Cleaning up...');
+            cancelled = true;
+            // any cleanup logic if needed
+        }
+
     }, []);
+
     return (
         <div className="tldraw__editor">
             <Tldraw
@@ -31,8 +72,8 @@ export default function YjsExample() {
                     CustomShortcuts
                 }
                 onMount={onMount}
-                snapshot={initialSnapshot}
                 persistenceKey={snapshotKey}
+                snapshot={snapshot}
             />
         </div>
     )
@@ -54,6 +95,15 @@ function onMount(editor: Editor) {
     editor.store.listen(() => {
         setSavedState(false);
     }, {scope: 'document', source: 'user'});
+
+
+    //every 10 seconds, if the state is not saved, save it
+    setInterval(() => {
+        if (!hasSavedState) {
+            uploadValTownState(editor, undefined);
+        }
+    }, 5000);
+
 
     //@ts-expect-error
     window.editor = editor

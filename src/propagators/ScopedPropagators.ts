@@ -4,7 +4,6 @@ import {Edge, getArrowsFromShape, getEdge} from "@/propagators/tlgraph"
 import {isShapeOfType} from "@/propagators/utils"
 import {Editor, TLArrowShape, TLBinding, TLGroupShape, TLShape, TLShapeId} from "tldraw"
 import {AsyncFunction} from "@/propagators/AsyncFunction"
-import * as assert from "assert";
 
 export type Prefix = 'button' | 'click' | 'tick' | 'geo' | ''
 export type ShapeAction = {
@@ -42,22 +41,24 @@ function isExpandedPropagatorOfType(arrow: TLShape, prefix: Prefix) {
 }
 
 export function getShapeActions(shape: TLShape): ShapeAction[] {
-    if(!shape.meta.actions){return []};
-    
+    if (!shape.meta.actions) {
+        return []
+    }
+
     return Object.values(shape.meta.actions).map((action: any): ShapeAction => {
-        if(!action.code || !action.name || !action.scope) {
+        if (!action.code || !action.name || !action.scope) {
             console.warn(`Invalid action found for shape ${shape.id}:`, action);
             return null;
         }
         //test if action code is a json
         const regex = new RegExp(`^\\s*\\(\\)\\s*\\{`);
         const isExpanded = regex.test(action.code)
-        
+
         const body = isExpanded ? action.code.trim().replace(/^\s*\(\)\s*{|}$/g, '') : `
             const mapping = ${action.code}
             editor.updateShape(_unpack({...from, ...mapping}))
         `
-        const func = new AsyncFunction('editor', 'from', 'to', 'G', 'bounds', 'dt', '_unpack','pack', body);
+        const func = new AsyncFunction('editor', 'from', 'to', 'G', 'bounds', 'dt', '_unpack', 'pack', body);
         return {
             name: action.name,
             func: func,
@@ -133,7 +134,7 @@ export const unpackShape = (shape: any) => {
         rotation: Number(rotation),
         props: {
             ...props,
-            text: cast(props.text, String),
+            ...(props.text !== undefined) && {text: cast(props.text, String)}
         },
         meta: m,
     }
@@ -153,7 +154,7 @@ function setArrowColor(editor: Editor, arrow: TLArrowShape, color: TLArrowShape[
 
 export async function registerPropagators(editor: Editor, propagators: (new (editor: Editor) => Propagator)[]) {
     const _propagators = propagators.map((PropagatorClass) => new PropagatorClass(editor))
-
+    editor.updateShape
     for (const prop of _propagators) {
         for (const shape of editor.getCurrentPageShapes()) {
             if (isShapeOfType<TLArrowShape>(shape, 'arrow')) {
